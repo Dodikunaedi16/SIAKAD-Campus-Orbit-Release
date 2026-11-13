@@ -1,0 +1,6 @@
+-- Additive migration. Preserve all existing accounts and academic records.
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "tokenVersion" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "mustChangePassword" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Lecturer" ADD COLUMN IF NOT EXISTS "program" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "program" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Class" ADD COLUMN IF NOT EXISTS "endsAt" TEXT NOT NULL DEFAULT '23:59';

@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DOSEN
+  MAHASISWA
+}
+
+enum AttendanceStatus {
+  HADIR
+  IZIN
+  SAKIT
+  ALPA
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  tokenVersion Int @default(0)
+  mustChangePassword Boolean @default(false)
+  createdAt    DateTime @default(now())
+  student      Student?
+  lecturer     Lecturer?
+}
+
+model Student {
+  id          String       @id @default(uuid())
+  nim         String       @unique
+  program     String
+  userId      String       @unique
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
+  attendances Attendance[]
+  grades      Grade[]
+}
+
+model Lecturer {
+  id      String  @id @default(uuid())
+  nidn    String  @unique
+  program String @default("")
+  userId  String  @unique
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes Class[]
+}
+
+model Course {
+  id      String  @id @default(uuid())
+  code    String  @unique
+  name    String
+  credits Int
+  program String @default("")
+  classes Class[]
+}
+
+model Class {
+  id           String       @id @default(uuid())
+  code         String       @unique
+  term         String
+  room         String
+  day          String
+  startsAt     String
+  endsAt       String @default("23:59")
+  courseId     String
+  lecturerId   String
+  course       Course       @relation(fields: [courseId], references: [id])
+  lecturer     Lecturer     @relation(fields: [lecturerId], references: [id])
+  enrollments  Enrollment[]
+  meetings     Meeting[]
+  grades       Grade[]
+}
+
+model Enrollment {
+  id        String  @id @default(uuid())
+  studentId String
+  classId   String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class     Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  @@unique([studentId, classId])
+}
+
+model Meeting {
+  id          String       @id @default(uuid())
+  classId     String
+  number      Int
+  openedAt    DateTime     @default(now())
+  class       Class        @relation(fields: [classId], references: [id])
+  qrSessions  QrSession[]
+  attendances Attendance[]
+  @@unique([classId, number])
+}
+
+model QrSession {
+  id          String   @id @default(uuid())
+  meetingId   String
+  tokenHash   String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  meeting     Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model Attendance {
+  id        String           @id @default(uuid())
+  meetingId String
+  studentId String
+  status    AttendanceStatus @default(HADIR)
+  markedAt  DateTime         @default(now())
+  meeting   Meeting          @relation(fields: [meetingId], references: [id])
+  student   Student          @relation(fields: [studentId], references: [id])
+  @@unique([meetingId, studentId])
+}
+
+// Nilai akhir untuk satu pengambilan kelas; 0..100 divalidasi di API.
+model Grade {
+  id         String   @id @default(uuid())
+  studentId  String
+  classId    String
+  score      Float
+  letter     String
+  updatedAt  DateTime @updatedAt
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class      Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  @@unique([studentId, classId])
+}

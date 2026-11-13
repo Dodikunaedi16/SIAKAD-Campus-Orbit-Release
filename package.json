@@ -1,0 +1,22 @@
+{
+  "name": "siakad-orbit",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/api"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @orbit/web",
+    "dev:api": "npm run start:dev -w @orbit/api",
+    "build": "npm run build -w @orbit/api && npm run build -w @orbit/web",
+    "db:generate": "npm run db:generate -w @orbit/api",
+    "db:push": "npm run db:push -w @orbit/api",
+    "db:seed": "npm run db:seed -w @orbit/api",
+    "test:api": "npm run test -w @orbit/api",
+    "test:integration": "node scripts/integration.cjs && node scripts/integration-extended.cjs && node scripts/security-regression.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

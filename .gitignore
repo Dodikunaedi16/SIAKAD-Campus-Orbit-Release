@@ -1,0 +1,16 @@
+node_modules/
+.next/
+dist/
+.env
+.env.local
+.dart_tool/
+build/
+*.iml
+.DS_Store
+
+backups/
+.env.simulation
+test-results/
+
+apps/mobile/android/local.properties
+apps/mobile/android/.gradle/
