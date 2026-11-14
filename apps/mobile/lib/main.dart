@@ -350,12 +350,17 @@ class _MainPageState extends State<MainPage> {
                               style: TextStyle(color: textMuted)),
                           const SizedBox(height: 15),
                           FilledButton.icon(
-                              onPressed: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) => const ScannerPage())),
+                              onPressed: () async {
+                                final recorded = await Navigator.push<bool>(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => const ScannerPage()));
+                                if (recorded == true && mounted) {
+                                  await load();
+                                }
+                              },
                               icon: const Icon(Icons.qr_code_scanner),
-                              label: const Text('Buka kamera pemindai'),
+                              label: const Text('Scan QR Kehadiran'),
                               style: FilledButton.styleFrom(
                                   backgroundColor: lime,
                                   foregroundColor: background,
@@ -444,44 +449,99 @@ class ClassTile extends StatelessWidget {
 
 class ScannerPage extends StatefulWidget {
   const ScannerPage({super.key});
+
   @override
   State<ScannerPage> createState() => _ScannerPageState();
 }
 
 class _ScannerPageState extends State<ScannerPage> {
   bool processing = false;
+  bool recorded = false;
   String message = '';
+
   Future<void> scan(String value) async {
-    if (processing || !value.startsWith('ORBIT:')) return;
-    setState(() => processing = true);
+    if (processing || recorded) return;
+    if (!value.startsWith('ORBIT:')) {
+      setState(() => message = 'QR ini bukan QR presensi Campus Orbit.');
+      return;
+    }
+    setState(() {
+      processing = true;
+      message = 'Memverifikasi presensi...';
+    });
     try {
       await api
           .call('/attendance/scan', method: 'POST', data: {'token': value});
-      if (mounted) setState(() => message = 'Presensi berhasil disimpan ✓');
+      if (!mounted) return;
+      setState(() {
+        recorded = true;
+        message = 'Kehadiran berhasil dicatat di server.';
+      });
     } catch (e) {
-      if (mounted)
-        setState(() => message = e.toString().replaceFirst('Exception: ', ''));
+      if (!mounted) return;
+      setState(() {
+        message = e.toString().replaceFirst('Exception: ', '');
+        processing = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(
-          title: const Text('Scan presensi'), backgroundColor: background),
-      body: Column(children: [
-        Expanded(child: MobileScanner(onDetect: (capture) {
-          for (final code in capture.barcodes) {
-            final value = code.rawValue;
-            if (value != null) scan(value);
-          }
-        })),
-        Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text(
-                message.isEmpty ? 'Arahkan kamera ke QR dosen' : message,
-                style:
-                    const TextStyle(color: lime, fontWeight: FontWeight.bold)))
-      ]));
+        appBar: AppBar(
+          title: const Text('Scan QR Presensi'),
+          backgroundColor: background,
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: recorded
+                    ? const Center(
+                        child: Icon(Icons.check_circle, color: lime, size: 96),
+                      )
+                    : MobileScanner(
+                        onDetect: (capture) {
+                          if (processing) return;
+                          for (final code in capture.barcodes) {
+                            final value = code.rawValue;
+                            if (value != null && value.startsWith('ORBIT:')) {
+                              scan(value);
+                              break;
+                            }
+                          }
+                        },
+                      ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      message.isEmpty
+                          ? 'Arahkan kamera ke QR yang ditampilkan dosen. QR berlaku 90 detik.'
+                          : message,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: recorded ? lime : textMuted,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (recorded) ...[
+                      const SizedBox(height: 14),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Lihat Riwayat Presensi'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 }
 
 class QrSessionPage extends StatefulWidget {
